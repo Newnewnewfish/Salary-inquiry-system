@@ -8,7 +8,8 @@ from .forms import LoginForm, RegistrationForm, ChangePasswordForm
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    form = LoginForm()
+    '''登陆视图'''
+	form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user is not None and user.verify_password(form.password.data):
@@ -21,6 +22,7 @@ def login():
 @auth.route('/logout')
 @login_required
 def logout():
+	'''登出视图'''
     logout_user()
     flash('You have been logged out.')
     return redirect(url_for('main.index'))
@@ -28,6 +30,7 @@ def logout():
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
+	'''帐号注册视图'''
     form = RegistrationForm()
     if form.validate_on_submit():
         user = User(username=form.username.data,
@@ -39,6 +42,7 @@ def register():
 @auth.route('/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():
+	'''密码修改视图'''
     form = ChangePasswordForm()
     if form.validate_on_submit():
         if current_user.verify_password(form.old_password.data):

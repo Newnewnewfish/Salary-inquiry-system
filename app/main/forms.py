@@ -9,6 +9,7 @@ from ..models import Role, User
 
 	
 class AdminForm(Form):
+	'''管理表单，供管理员帐号修改其他注册用户帐号信息'''
 	username = StringField('Username', validators=[
 		Required(), Length(1, 64), Regexp('^[A-Za-z][A-Za-z0-9_.]*$', 0,
 										'Usernames must have only letters, '
@@ -32,6 +33,7 @@ class AdminForm(Form):
 
 
 class PostForm(Form):
+	'''数据录入表单'''
 	id = StringField('Please input the employee number:',validators=[Required()])
 	body = PageDownField("Please input the salary data:", validators=[Required()])
 	submit = SubmitField('Submit')

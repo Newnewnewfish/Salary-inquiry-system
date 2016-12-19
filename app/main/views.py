@@ -10,13 +10,16 @@ from ..decorators import admin_required, hr_required
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
+	'''主视图'''
     form = PostForm()
-    if current_user.can(Permission.INPUT) and \
+    #对于有写入权限的当前用户，提供数据录入功能
+	if current_user.can(Permission.INPUT) and \
            form.validate_on_submit():
         post = Post(body=form.body.data,
                     author_id=form.id.data)
         db.session.add(post)
         return redirect(url_for('.index'))
+	#允许注册用户获得本帐号数据	
     if current_user.can(Permission.READ):
 		page = request.args.get('page', 1, type=int)
 		pagination = Post.query.paginate(
@@ -31,7 +34,8 @@ def index():
 @login_required
 @hr_required
 def user(id):
-    user = User.query.get_or_404(id)
+    '''用户数据视图'''
+	user = User.query.get_or_404(id)
     page = request.args.get('page', 1, type=int)
     pagination = user.posts.paginate(
         page, per_page=current_app.config['POSTS_PER_PAGE'],
@@ -46,7 +50,8 @@ def user(id):
 @login_required
 @admin_required
 def edit_profile_admin(id):
-    user = User.query.get_or_404(id)
+    '''管理员视图，允许管理帐号修改其他帐号信息'''
+	user = User.query.get_or_404(id)
     form = AdminForm(user=user)
     if form.validate_on_submit():
         user.username = form.username.data

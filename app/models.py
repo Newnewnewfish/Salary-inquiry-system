@@ -7,12 +7,16 @@ from . import db, login_manager
 
 
 class Permission:
-    READ = 0x01
-    INPUT = 0x02
-    ADMINISTER = 0x04
+    READ = 0x01 #读取工资数据权限
+    INPUT = 0x02 #写入工资数据权限
+    ADMINISTER = 0x04 #管理员权限
 
 
 class Role(db.Model):
+	'''用户角色类型的ORM模型
+		包含id, name, defualt, permissions四个字段
+		并提供id作为表users的外键引用
+	'''
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True)
@@ -22,7 +26,10 @@ class Role(db.Model):
 
     @staticmethod
     def insert_roles():
-        roles = {
+		'''初始化用户角色，定义普通用户read权限，
+			HR用户录入权限，管理帐号权限
+		'''
+		roles = {
             'User': (Permission.READ, True),
             'HR': (Permission.READ |
                           Permission.INPUT, False),
@@ -42,6 +49,11 @@ class Role(db.Model):
 
 
 class User(UserMixin, db.Model):
+	'''用户帐号的ORM模型
+		包含id, username, role_id, password_hash四个字段，
+		其中role_id为外键引用自表roles的id字段
+		并提供id作为表posts的外键引用
+	'''
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, index=True)
@@ -50,19 +62,23 @@ class User(UserMixin, db.Model):
     posts = db.relationship('Post', backref='author', lazy='dynamic')
 
     def __init__(self, **kwargs):
+	'''定义默认用户角色'''
         super(User, self).__init__(**kwargs)
         if self.role is None:
 			self.role = Role.query.filter_by(default=True).first()
 
     @property
     def password(self):
-        raise AttributeError('password is not a readable attribute')
+        '''禁止读取password'''
+		raise AttributeError('password is not a readable attribute')
 
     @password.setter
     def password(self, password):
+		'''设置密码并保存密码的散列值'''
         self.password_hash = generate_password_hash(password)
 
     def verify_password(self, password):
+		'''校检密码'''
         return check_password_hash(self.password_hash, password)
 
     def can(self, permissions):
@@ -77,6 +93,7 @@ class User(UserMixin, db.Model):
 
 
 class AnonymousUser(AnonymousUserMixin):
+	'''对匿名用户不提供权限'''
     def can(self, permissions):
         return False
 
@@ -88,10 +105,15 @@ login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    '''加载用户的回调函数'''
+	return User.query.get(int(user_id))
 
 
 class Post(db.Model):
+	'''工资数据的ORM模型
+		包含id, body, body_html, author_id四个字段
+		其中author_id为外键，引用自表users的id字段
+	'''
     __tablename__ = 'posts'
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
@@ -99,26 +121,13 @@ class Post(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
     @staticmethod
-    def generate_fake(count=100):
-        from random import seed, randint
-        import forgery_py
-
-        seed()
-        user_count = User.query.count()
-        for i in range(count):
-            u = User.query.offset(randint(0, user_count - 1)).first()
-            p = Post(body=forgery_py.lorem_ipsum.sentences(randint(1, 5)),
-						author=u)
-            db.session.add(p)
-            db.session.commit()
-
-    @staticmethod
     def on_changed_body(target, value, oldvalue, initiator):
+	'''处理工资数据文本'''
         allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code',
                         'em', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
-                        'h1', 'h2', 'h3', 'p', 'tr' , 'table' , 'td' ]
+                        'h1', 'h2', 'h3', 'p', 'tr' , 'table' , 'td' ] #仅允许文本中存在以上html标签
         target.body_html = bleach.linkify(bleach.clean(
             markdown(value, output_format='html'),
-            tags=allowed_tags, strip=True))
+            tags=allowed_tags, strip=True)) #将markdown文本转化为html文本
 
-db.event.listen(Post.body, 'set', Post.on_changed_body)
+db.event.listen(Post.body, 'set', Post.on_changed_body) #监听文本录入
